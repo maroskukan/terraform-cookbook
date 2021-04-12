@@ -20,6 +20,13 @@ There are some principles of IaC such as:
 - Deployment is idempotent and consistent
 - Deployment can use push or pull model
 
+The IaC brings number of benefits to the table such as:
+- Automated deployment
+- Consistent environments
+- Repeatable process
+- Reusable components
+- Documented architecture
+
 ### Imperative vs Declarative
 
 Infrastructure defined in imperative (procedural) way would mean you need to specify each configuration item as well as the order in which these items need to be applied to get desired outcome.

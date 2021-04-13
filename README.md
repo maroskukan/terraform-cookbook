@@ -4,8 +4,14 @@
   - [Introduction](#introduction)
     - [Infrastructure as Code](#infrastructure-as-code)
     - [Imperative vs Declarative](#imperative-vs-declarative)
+  - [Documentation](#documentation)
   - [Installation](#installation)
     - [Linux](#linux)
+  - [Components](#components)
+    - [Core](#core)
+    - [Plugins](#plugins)
+    - [Configuration Files](#configuration-files)
+    - [State Files](#state-files)
 
 ## Introduction
 
@@ -35,7 +41,13 @@ Infrastructure defined in imperative (procedural) way would mean you need to spe
 
 On the other hand, infrastructure defined in declarative way you only define the desired outcome, leaving implementation details up to software.
 
+## Documentation
+
+- (Terraform Providers)[https://registry.terraform.io/browse/providers]
+
 ## Installation
+
+Hashicorp provides number of [packages](https://www.terraform.io/downloads.html) for various operating systems such Mac OS, Linux, Windows and others. Example below demostrates installation on Ubuntu Linux distribution.
 
 ### Linux
 
@@ -62,6 +74,60 @@ Once installed, verify by invoking version information.
 terraform --version
 Terraform v0.14.10
 ```
+
+## Components
+
+### Core
+
+You may notice from the installation steps for Linux, terraform comes as single compiled binary that is written in Go language. It is called Terraform Core and it includes everyhing that is required for running the base software.
+
+### Plugins
+
+Terraform plugins are executable binaries written in Go Language which extend the capabilities of Core. Currently there is just one type of plugin - `providers`. Some example providers include be `AWS`, `Azure`, `GCP`, `Kubernetes`. 
+
+### Configuration Files
+
+Terraform files `.tf` store configuration. The configuration files may include `comments`, `variables`, `provider configuration`, `data sources`, `resources`, `outputs`.
+
+```bash
+# Variables
+variable "aws_access_key" {}
+variable "aws_secret_key" {}
+
+variable "aws_region" {
+  default = "us-east-1"
+
+# Provider
+provider "aws" {
+
+  access_key = "var.access_key"
+  secret_key = "var.secret_key"
+  region = "var.aws_region"
+}
+
+# Data source
+data "aws_ami" "alx" {
+  most_recent = true
+  owners = ["amazon"]
+  filters {}
+}
+
+# Resource
+resource "aws_instance" "ex" {
+  ami = "data.aws_ami.alx.id"
+  instance_type = "t2.micro"
+}
+
+# Output
+output = "aws_public_ip" {
+  value =
+  "aws_instance.ex.public_dns"
+}
+```
+
+### State Files
+
+When resources have been provisioned Terraform state file(s) are used to keep track of the current state.
 
 
 

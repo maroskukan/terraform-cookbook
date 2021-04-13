@@ -22,6 +22,7 @@
   - [Resource Updates](#resource-updates)
     - [State](#state)
     - [Plan](#plan-1)
+    - [Change 1 - Add custom VPC](#change-1---add-custom-vpc)
 
 ## Introduction
 
@@ -771,3 +772,297 @@ When Terraform applies new configuration to infrastructure it will go over these
 3. Perform additions, updates and deletions - in parallel when possible
 
 It is also recommended to save the plan to a file.
+
+### Change 1 - Add custom VPC
+
+The first change we are going to introduce to `webapp` application the introduction of new VPC resource which also needs to include Internet Gateway, Subnet, Route Table, and Route Table association.
+
+Since we are already using VCS, this change can be inspected in commit (27bf672)[https://github.com/maroskukan/terraform-cookbook/commit/27bf6722353e44d614c8151c2a4ebef5dba7d78a]. Once you happy with the review, lets start by `plan` phase.
+
+```bash
+cd examples/webapp/
+terraform plan -out webapp.tfplan
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_instance.nginx1 will be created
+  + resource "aws_instance" "nginx1" {
+      + ami                          = "ami-087099ed8e934cdf1"
+      + arn                          = (known after apply)
+      + associate_public_ip_address  = (known after apply)
+      + availability_zone            = (known after apply)
+      + cpu_core_count               = (known after apply)
+      + cpu_threads_per_core         = (known after apply)
+      + get_password_data            = false
+      + host_id                      = (known after apply)
+      + id                           = (known after apply)
+      + instance_state               = (known after apply)
+      + instance_type                = "t2.micro"
+      + ipv6_address_count           = (known after apply)
+      + ipv6_addresses               = (known after apply)
+      + key_name                     = "tfkey"
+      + outpost_arn                  = (known after apply)
+      + password_data                = (known after apply)
+      + placement_group              = (known after apply)
+      + primary_network_interface_id = (known after apply)
+      + private_dns                  = (known after apply)
+      + private_ip                   = (known after apply)
+      + public_dns                   = (known after apply)
+      + public_ip                    = (known after apply)
+      + secondary_private_ips        = (known after apply)
+      + security_groups              = (known after apply)
+      + source_dest_check            = true
+      + subnet_id                    = (known after apply)
+      + tenancy                      = (known after apply)
+      + vpc_security_group_ids       = (known after apply)
+
+      + ebs_block_device {
+          + delete_on_termination = (known after apply)
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + snapshot_id           = (known after apply)
+          + tags                  = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = (known after apply)
+          + volume_type           = (known after apply)
+        }
+
+      + enclave_options {
+          + enabled = (known after apply)
+        }
+
+      + ephemeral_block_device {
+          + device_name  = (known after apply)
+          + no_device    = (known after apply)
+          + virtual_name = (known after apply)
+        }
+
+      + metadata_options {
+          + http_endpoint               = (known after apply)
+          + http_put_response_hop_limit = (known after apply)
+          + http_tokens                 = (known after apply)
+        }
+
+      + network_interface {
+          + delete_on_termination = (known after apply)
+          + device_index          = (known after apply)
+          + network_interface_id  = (known after apply)
+        }
+
+      + root_block_device {
+          + delete_on_termination = (known after apply)
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + tags                  = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = (known after apply)
+          + volume_type           = (known after apply)
+        }
+    }
+
+  # aws_internet_gateway.igw will be created
+  + resource "aws_internet_gateway" "igw" {
+      + arn      = (known after apply)
+      + id       = (known after apply)
+      + owner_id = (known after apply)
+      + vpc_id   = (known after apply)
+    }
+
+  # aws_route_table.rtb will be created
+  + resource "aws_route_table" "rtb" {
+      + arn              = (known after apply)
+      + id               = (known after apply)
+      + owner_id         = (known after apply)
+      + propagating_vgws = (known after apply)
+      + route            = [
+          + {
+              + carrier_gateway_id         = ""
+              + cidr_block                 = "0.0.0.0/0"
+              + destination_prefix_list_id = ""
+              + egress_only_gateway_id     = ""
+              + gateway_id                 = (known after apply)
+              + instance_id                = ""
+              + ipv6_cidr_block            = ""
+              + local_gateway_id           = ""
+              + nat_gateway_id             = ""
+              + network_interface_id       = ""
+              + transit_gateway_id         = ""
+              + vpc_endpoint_id            = ""
+              + vpc_peering_connection_id  = ""
+            },
+        ]
+      + vpc_id           = (known after apply)
+    }
+
+  # aws_route_table_association.rta-subnet1 will be created
+  + resource "aws_route_table_association" "rta-subnet1" {
+      + id             = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # aws_security_group.nginx-sg will be created
+  + resource "aws_security_group" "nginx-sg" {
+      + arn                    = (known after apply)
+      + description            = "Allow ports for nginx demo"
+      + egress                 = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 0
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "-1"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 0
+            },
+        ]
+      + id                     = (known after apply)
+      + ingress                = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 22
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 22
+            },
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 80
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 80
+            },
+        ]
+      + name                   = "nginx-sg"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + vpc_id                 = (known after apply)
+    }
+
+  # aws_subnet.subnet1 will be created
+  + resource "aws_subnet" "subnet1" {
+      + arn                             = (known after apply)
+      + assign_ipv6_address_on_creation = false
+      + availability_zone               = "us-east-1a"
+      + availability_zone_id            = (known after apply)
+      + cidr_block                      = "10.1.0.0/24"
+      + id                              = (known after apply)
+      + ipv6_cidr_block_association_id  = (known after apply)
+      + map_public_ip_on_launch         = true
+      + owner_id                        = (known after apply)
+      + tags_all                        = (known after apply)
+      + vpc_id                          = (known after apply)
+    }
+
+  # aws_vpc.vpc will be created
+  + resource "aws_vpc" "vpc" {
+      + arn                              = (known after apply)
+      + assign_generated_ipv6_cidr_block = false
+      + cidr_block                       = "10.1.0.0/16"
+      + default_network_acl_id           = (known after apply)
+      + default_route_table_id           = (known after apply)
+      + default_security_group_id        = (known after apply)
+      + dhcp_options_id                  = (known after apply)
+      + enable_classiclink               = (known after apply)
+      + enable_classiclink_dns_support   = (known after apply)
+      + enable_dns_hostnames             = true
+      + enable_dns_support               = true
+      + id                               = (known after apply)
+      + instance_tenancy                 = "default"
+      + ipv6_association_id              = (known after apply)
+      + ipv6_cidr_block                  = (known after apply)
+      + main_route_table_id              = (known after apply)
+      + owner_id                         = (known after apply)
+      + tags_all                         = (known after apply)
+    }
+
+Plan: 7 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + aws_instance_public_dns = (known after apply)
+
+------------------------------------------------------------------------
+
+This plan was saved to: webapp.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "webapp.tfplan"
+```
+
+When you are happy with the proposed changes use `apply` argument to executed the change and provision the infrastructure.
+
+```bash
+terraform apply "webapp.tfplan"
+aws_vpc.vpc: Creating...
+aws_vpc.vpc: Still creating... [10s elapsed]
+aws_vpc.vpc: Still creating... [20s elapsed]
+aws_vpc.vpc: Still creating... [30s elapsed]
+aws_vpc.vpc: Still creating... [40s elapsed]
+aws_vpc.vpc: Still creating... [50s elapsed]
+aws_vpc.vpc: Still creating... [1m0s elapsed]
+aws_vpc.vpc: Creation complete after 1m6s [id=vpc-0b06853b96aaae847]
+aws_internet_gateway.igw: Creating...
+aws_subnet.subnet1: Creating...
+aws_security_group.nginx-sg: Creating...
+aws_internet_gateway.igw: Still creating... [10s elapsed]
+aws_subnet.subnet1: Still creating... [10s elapsed]
+aws_security_group.nginx-sg: Still creating... [10s elapsed]
+aws_internet_gateway.igw: Creation complete after 17s [id=igw-0367670995ac620d3]
+aws_route_table.rtb: Creating...
+aws_subnet.subnet1: Still creating... [20s elapsed]
+aws_security_group.nginx-sg: Still creating... [20s elapsed]
+aws_route_table.rtb: Still creating... [10s elapsed]
+aws_subnet.subnet1: Still creating... [30s elapsed]
+aws_security_group.nginx-sg: Still creating... [30s elapsed]
+aws_route_table.rtb: Creation complete after 14s [id=rtb-0bdf091b60ee27b3f]
+#
+# Output omitted
+#
+Apply complete! Resources: 7 added, 0 changed, 0 destroyed.
+
+The state of your infrastructure has been saved to the path
+below. This state is required to modify and destroy your
+infrastructure, so keep it safe. To inspect the complete state
+use the `terraform show` command.
+
+State path: terraform.tfstate
+
+Outputs:
+
+aws_instance_public_dns = "ec2-52-55-93-62.compute-1.amazonaws.com"
+```
+
+Once the deployment is completed, you can inspect the `.tfstate` file to retrieve the current state along with all details.
+
+Finally, verify the web applications by inspecing the reponse body.
+
+```bash
+curl ec2-52-55-93-62.compute-1.amazonaws.com
+<html><head><title>Blue Team Server</title></head><body style="background-color:#1F778D"><p style="text-align: center;"><span style="color:#FFFFFF;"><span style="font-size:28px;">Blue Team</span></span></p></body></html>
+```

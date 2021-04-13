@@ -8,6 +8,9 @@
 # .tfplan files
 *.tfplan
 
+# hcl lock files
+*.lock.hcl
+
 # Crash log files
 crash.log
 

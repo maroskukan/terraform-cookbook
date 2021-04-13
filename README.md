@@ -12,6 +12,8 @@
     - [Plugins](#plugins)
     - [Configuration Files](#configuration-files)
     - [State Files](#state-files)
+  - [Environment](#environment)
+    - [AWS](#aws)
 
 ## Introduction
 
@@ -130,6 +132,39 @@ output = "aws_public_ip" {
 When resources have been provisioned Terraform state file(s) are used to keep track of the current state.
 
 
+## Environment
 
+### AWS
 
+To provision infrastructure on AWS, Terraform will require you to configure credentials with necessary permissions. 
+
+For example, I have an existing AWS IAM group `AWSAdmins` which has attached policy `AdministratorAccess`. In order to create a new user, make it member of this group and generate credentials you can leverage `create_iam_user.sh` script located in `recipes` directory. It uses aws cli to perform these actions.
+
+```bash
+# Define IAM Username
+TF_IAM_USER="tfdemo"
+
+# Create and add user to group
+aws iam create-user --user-name $TF_IAM_USER
+aws iam add-user-to-group \
+--group-name AWSAdmins \
+--user-name $TF_IAM_USER
+
+# Generate access key
+aws iam create-access-key --user-name $TF_IAM_USER
+```
+
+The output of last command will contain the value for `AccessKeyId` and `SecretAccessKey` which you need to enter in the `.tfvars` file.
+
+Next, you need to generate Key pair, you can leverage `create_key_pair.sh` script located in `recipes` directory.
+
+```bash
+# Define Key Pair Name
+TF_EC2_KEYPAIR_NAME="tfkey"
+
+# Create key pair
+aws ec2 create-key-pair --key-name $TF_EC2_KEYPAIR_NAME --region us-east-1
+```
+
+The output of last command will contain the value for `KeyMaterial` and `KeyName`. The value of `KeyMaterial` needs to be stored in the file and path needs to be defined in the `tfvars` file.
 

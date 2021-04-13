@@ -19,6 +19,9 @@
     - [Plan](#plan)
     - [Apply](#apply)
     - [Destroy](#destroy)
+  - [Resource Updates](#resource-updates)
+    - [State](#state)
+    - [Plan](#plan-1)
 
 ## Introduction
 
@@ -733,3 +736,38 @@ aws_default_vpc.default: Destruction complete after 0s
 
 Destroy complete! Resources: 3 destroyed.
 ```
+
+
+## Resource Updates
+
+It is quite common that the infrastructure you deploy will evolve over time to align with changing business needs. Therefore a IaC tool like Terraform needs to be able to assess the current state and apply any changes that were described in the updated configuration file.
+
+### State
+
+Terraform stores the current state in the `.tfstate` JSON format file. It contains resources mappings and metadata. It supports locking. It is created when you first apply the plan file.
+
+The default location of this file is in local directory, however it is also possible to store it in remote location - AWS, Azure, NFS, Terraform Cloud.
+
+A state file contents for deprovisioned infrastructure can look like follows:
+
+```json
+{
+  "version": 4,
+  "terraform_version": "0.14.10",
+  "serial": 9,
+  "lineage": "155591be-3aa1-233c-f105-0390b72ddfff",
+  "outputs": {},
+  "resources": []
+}
+```
+
+Valid state if very important, therefore once you decide to manage infrastructure through Terraform make all changes through it and not manually.
+
+### Plan
+
+When Terraform applies new configuration to infrastructure it will go over these steps:
+1. Inspect state
+2. Create dependency graph
+3. Perform additions, updates and deletions - in parallel when possible
+
+It is also recommended to save the plan to a file.

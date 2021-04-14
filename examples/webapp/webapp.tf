@@ -50,7 +50,7 @@ data "aws_availability_zones" "available" {}
 # Networking
 resource "aws_vpc" "vpc" {
     cidr_block = var.network_address_space
-    enable_dns_hostnames = "true"
+    enable_dns_hostnames = true
 }
 
 resource "aws_internet_gateway" "igw" {
@@ -60,14 +60,14 @@ resource "aws_internet_gateway" "igw" {
 resource "aws_subnet" "subnet1" {
     cidr_block = var.subnet1_address_space
     vpc_id = aws_vpc.vpc.id
-    map_public_ip_on_launch = "true"
+    map_public_ip_on_launch = true
     availability_zone = data.aws_availability_zones.available.names[0]
 }
 
 resource "aws_subnet" "subnet2" {
     cidr_block = var.subnet2_address_space
     vpc_id = aws_vpc.vpc.id
-    map_public_ip_on_launch = "true"
+    map_public_ip_on_launch = true
     availability_zone = data.aws_availability_zones.available.names[1]
 }
 
@@ -207,6 +207,10 @@ resource "aws_instance" "nginx2" {
 }
 
 # Output
-output "aws_instance_public_dns" {
+output "aws_elb_public_dns" {
     value = aws_elb.web.dns_name
+}
+
+output "aws_webapp_url" {
+    value = "http://${aws_elb.web.dns_name}"
 }

@@ -24,6 +24,10 @@
     - [Plan](#plan-1)
     - [Change 1 - Add custom VPC](#change-1---add-custom-vpc)
     - [Change 2 - Add redundancy](#change-2---add-redundancy)
+  - [Hashicorp Configuration Language](#hashicorp-configuration-language)
+    - [Blocks](#blocks)
+    - [Object Types](#object-types)
+    - [References](#references)
 
 ## Introduction
 
@@ -55,7 +59,8 @@ On the other hand, infrastructure defined in declarative way you only define the
 
 ## Documentation
 
-- (Terraform Providers)[https://registry.terraform.io/browse/providers]
+- [HCL Best Practices](https://www.terraform.io/docs/extend/best-practices/index.html)
+- [Terraform Providers](https://registry.terraform.io/browse/providers)
 
 ## Installation
 
@@ -1394,4 +1399,99 @@ curl nginx-elb-1997202815.us-east-1.elb.amazonaws.com
 # Green team
 curl nginx-elb-1997202815.us-east-1.elb.amazonaws.com
 <html><head><title>Green Team Server</title></head><body style="background-color:#77A032"><p style="text-align: center;"><span style="color:#FFFFFF;"><span style="font-size:28px;">Green Team</span></span></p></body></html>
+```
+
+
+## Hashicorp Configuration Language
+
+HashiCorp Configuration Language (HCL) is a domain specific language used within Terraform configuration files `.tf`. It is human readable and editable and supports conditionals, functions and templates.
+
+### Blocks
+
+Terraform uses `blocks` to define an object. The basic syntax for this construct is as follows:
+
+```bash
+block_type label_one label_two {
+  key = value
+  embedded_block {
+    key = value
+  }
+}
+```
+
+Block type can be `variable`, `provider`, `data`, `resource`, `output`. For example block for AWS VPC Route Table is as follows:
+
+```json
+resource "aws_route_table" "my-route-table" {
+  vpc_id = "vpc-0a8534e9866d67b8a"
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = "igw-05493650d45f1aa09"
+  }
+}
+```
+
+### Object Types
+
+There are different object types available in HCL. For example, the below resource's embedded `ingress` block uses `number` to define ports and `string` to define protocol and `list` to define cidr_blocks, which contain only one element at the moment.
+
+```json
+resource "aws_security_group" "elb-sg" {
+    name = "nginx_elb_sg"
+    vpc_id = aws_vpc.vpc.id
+
+    # HTTP access from anywhere
+    ingress {
+        from_port = 80
+        to_port = 80
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+```
+
+Next, an example of a `bool` object type is used for enable_dns_hostnames key property.
+
+```bash
+resource "aws_vpc" "vpc" {
+    cidr_block = var.network_address_space
+    enable_dns_hostnames = true
+}
+```
+
+The last object type is `map`. This includes key value pairs which are comma separated.
+
+```bash
+map = {ec2 = "nginx1", type = "t2.micro", start = true}
+```
+
+### References
+
+To reference an existing object within the configuration `tf` file you need to use references. In example below, we are referencing `aws_access_key`, `aws_secret_key` and `region` variables from `provider` object type called `aws`.
+
+```bash
+provider "aws" {
+    access_key = var.aws_access_key
+    secret_key = var.aws_secret_key
+    region = var.region
+}
+```
+
+To access a value of an object we are referencing we need to postfix it with property name. For example to retrieve `id` of object `subnet1` of type `aws_subnet` we would use the following syntax:
+
+```bash
+resource "aws_instance" "nginx1" {
+    ami = data.aws_ami.aws-linux.id
+    instance_type = "t2.micro"
+    subnet_id = aws_subnet.subnet1.id
+    vpc_security_group_ids = [aws_security_group.nginx-sg.id]
+    key_name = var.key_name
+```
+
+There are also special types of objects such as `local`, `self` and `module`.
+
+To concatenate a value within variable you need to leverage string interpolation. For example to generate output full URL for application we would use the following syntax:
+
+```bash
+output "aws_webapp_url" {
+    value = "http://${aws_elb.web.dns_name}"
+}
 ```

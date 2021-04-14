@@ -2,3 +2,7 @@ aws_access_key = "<your-access-key-id>"
 aws_secret_key = "<your-secret-access-key-value>"
 key_name = "<your ssh key pair name>"
 private_key_path = "<your ssh private key (.pem) path>"
+
+bucket_name_prefix = "<your-bucket-prefix>"
+environment_tag = "<your-environment>>"
+billing_code_tag = "<our-billing-code>"

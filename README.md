@@ -34,6 +34,9 @@
       - [Local-exec](#local-exec)
       - [Remote-exec](#remote-exec)
     - [Change 3 - Add S3 Bucket](#change-3---add-s3-bucket)
+  - [Functions](#functions)
+    - [Categories](#categories)
+    - [Examples](#examples)
 
 ## Introduction
 
@@ -67,6 +70,7 @@ On the other hand, infrastructure defined in declarative way you only define the
 
 - [HCL Best Practices](https://www.terraform.io/docs/extend/best-practices/index.html)
 - [Terraform Providers](https://registry.terraform.io/browse/providers)
+- [Terraform Functions](https://www.terraform.io/docs/language/functions/index.html)
 
 ## Installation
 
@@ -2292,3 +2296,51 @@ Last-Modified: Wed, 14 Apr 2021 14:14:23 GMT
 Server: nginx/1.18.0
 Connection: keep-alive
 ```
+
+## Functions
+
+
+HashiCorp Configuration Language supports functions. Functions accept positional arguments and can be evaluated using `terraform console` for test purposes. There are different function categories.
+
+### Categories
+
+- Numeric, can be used to manipulate a list of numbers, for example `min(42, 13, 7)` will return value of `7`.
+- String, can be used to manipulate string value, for example `lower("BUCKETNAME")` will return value of `bucketname`
+- Collections, can be used to manipulated lists and maps, for example `merge(map1, map2)`
+- Filesystem, can be used to interact with filesystem, for example `file(path)` will return the content of the file as string.
+- IP network, can be used to manipulate IP address objects, for example `cidrsubnet("10.1.2.0/24", 4, 15)` will return `10.1.2.240/28`
+- Date and time, can be used to work with time, for example `timestamp()` will return a UTC timestamp string in RFC 3339 format `"2021-04-14T17:58:17Z"`
+
+### Examples
+
+Managing networking using `cidrsubnet()` function.
+
+```json
+#Configure networking
+variable network_info {
+  default = "10.1.0.0/16" #type, default, description
+}
+
+#Returns 10.1.0.0/24
+cidr_block = cidrsubnet(var.network_info, 8, 0)
+
+#Returns 10.1.0.5
+host_ip = cidrhost(var.network_info,5)
+```
+
+Lookup values in a map.
+
+```json
+variable "amis" {
+  type = "map"
+  default = {
+    us-east-1 = "ami-1234"
+    us-west-1 = "ami-5678"
+  }
+}
+
+#Returns ami-5678
+ami = lookup(var.amis, "us-west-1", "error")
+```
+
+

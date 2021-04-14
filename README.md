@@ -28,6 +28,11 @@
     - [Blocks](#blocks)
     - [Object Types](#object-types)
     - [References](#references)
+  - [Provisioners](#provisioners)
+    - [Types](#types)
+      - [File](#file)
+      - [Local-exec](#local-exec)
+      - [Remote-exec](#remote-exec)
 
 ## Introduction
 
@@ -1504,5 +1509,60 @@ resource "aws_subnet" "subnet1" {
     vpc_id = aws_vpc.vpc.id
     map_public_ip_on_launch = true
     availability_zone = data.aws_availability_zones.available.names[0]
+}
+```
+
+
+## Provisioners
+
+Provisioners are used for post deployment configuration. They should be used as last resort solution as for example Terraform cannot manage internal state of deployed EC2 instances. For this reason configuration management tools such as Ansible, Chef, of Puppet should be leveraged.
+
+There are two provisioners types - local and remote. Local executes on your local machine. Remote executes on remote machine.
+
+Provisioners are executed during creation and/or during destruction of an object.
+
+Multiple provisioners are supported on a resource. Order is significant.
+
+If provisioning fails, terraform will not destroy the deployed resources to allow you to troubleshoot.
+
+### Types
+
+#### File
+
+There are number of different provisioner types available. For example `file` provisioner can copy file located on your local machine to remote instance. 
+
+For remote a `connection` object is required to define how to connect to resource.
+
+```bash
+provisioner "file" {
+  connection {
+    type = "ssh"
+    user = "root"
+    private_key = var.private_key
+    host = var.hostname
+  }
+  source = "/local/path/to/file.txt"
+  destination = "/path/to/file.txt"
+
+}
+```
+
+#### Local-exec
+
+The local-exec provisioner can execute commands on local machine.
+
+```bash
+provisioner "local-exec" {
+  command = "local command here"
+}
+```
+
+#### Remote-exec
+
+The remote-exec provisioner can execute commands on remote machine.
+
+```bash
+provisioner "remote-exec" {
+  scripts = " ["list", "of", "local", "scripts"]
 }
 ```

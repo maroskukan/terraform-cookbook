@@ -23,6 +23,7 @@
     - [State](#state)
     - [Plan](#plan-1)
     - [Change 1 - Add custom VPC](#change-1---add-custom-vpc)
+    - [Change 2 - Add redundancy](#change-2---add-redundancy)
 
 ## Introduction
 
@@ -777,7 +778,7 @@ It is also recommended to save the plan to a file.
 
 The first change we are going to introduce to `webapp` application the introduction of new VPC resource which also needs to include Internet Gateway, Subnet, Route Table, and Route Table association.
 
-Since we are already using VCS, this change can be inspected in commit (27bf672)[https://github.com/maroskukan/terraform-cookbook/commit/27bf6722353e44d614c8151c2a4ebef5dba7d78a]. Once you happy with the review, lets start by `plan` phase.
+Since we are already using VCS, this change can be inspected in commit [27bf672](https://github.com/maroskukan/terraform-cookbook/commit/27bf6722353e44d614c8151c2a4ebef5dba7d78a). Once you happy with the review, lets start by `plan` phase.
 
 ```bash
 cd examples/webapp/
@@ -1065,4 +1066,332 @@ Finally, verify the web applications by inspecing the reponse body.
 ```bash
 curl ec2-52-55-93-62.compute-1.amazonaws.com
 <html><head><title>Blue Team Server</title></head><body style="background-color:#1F778D"><p style="text-align: center;"><span style="color:#FFFFFF;"><span style="font-size:28px;">Blue Team</span></span></p></body></html>
+```
+
+### Change 2 - Add redundancy
+
+The second change that we are going to introduce to `webapp` application is the introduction of new network resources which will now include a Elastic Load Balancer, second subnet in new Availability Zone and a new EC2 instance. Security groups will be also updated to reflect new design.
+
+This change can be inspected in commit [efd893](https://github.com/maroskukan/terraform-cookbook/commit/efd8937b379586f91b919a64b456f7b3bd861981). Once you happy with the review, lets start by `plan` phase which will overwrite our existing `.tfplan` file.
+
+```bash
+cd examples/webapp/
+terraform plan -out webapp.tfplan
+aws_vpc.vpc: Refreshing state... [id=vpc-0a8534e9866d67b8a]
+aws_subnet.subnet1: Refreshing state... [id=subnet-0526bb834afd059fe]
+aws_internet_gateway.igw: Refreshing state... [id=igw-05493650d45f1aa09]
+aws_security_group.nginx-sg: Refreshing state... [id=sg-0ebac88bf142c3692]
+aws_route_table.rtb: Refreshing state... [id=rtb-0b0a422fc339f024a]
+aws_instance.nginx1: Refreshing state... [id=i-02c1ecd6c3b9766b3]
+aws_route_table_association.rta-subnet1: Refreshing state... [id=rtbassoc-00d4a78aa5901538a]
+
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_elb.web will be created
+  + resource "aws_elb" "web" {
+      + arn                         = (known after apply)
+      + availability_zones          = (known after apply)
+      + connection_draining         = false
+      + connection_draining_timeout = 300
+      + cross_zone_load_balancing   = true
+      + dns_name                    = (known after apply)
+      + id                          = (known after apply)
+      + idle_timeout                = 60
+      + instances                   = (known after apply)
+      + internal                    = (known after apply)
+      + name                        = "nginx-elb"
+      + security_groups             = (known after apply)
+      + source_security_group       = (known after apply)
+      + source_security_group_id    = (known after apply)
+      + subnets                     = (known after apply)
+      + zone_id                     = (known after apply)
+
+      + health_check {
+          + healthy_threshold   = (known after apply)
+          + interval            = (known after apply)
+          + target              = (known after apply)
+          + timeout             = (known after apply)
+          + unhealthy_threshold = (known after apply)
+        }
+
+      + listener {
+          + instance_port     = 80
+          + instance_protocol = "http"
+          + lb_port           = 80
+          + lb_protocol       = "http"
+        }
+    }
+
+  # aws_instance.nginx2 will be created
+  + resource "aws_instance" "nginx2" {
+      + ami                          = "ami-087099ed8e934cdf1"
+      + arn                          = (known after apply)
+      + associate_public_ip_address  = (known after apply)
+      + availability_zone            = (known after apply)
+      + cpu_core_count               = (known after apply)
+      + cpu_threads_per_core         = (known after apply)
+      + get_password_data            = false
+      + host_id                      = (known after apply)
+      + id                           = (known after apply)
+      + instance_state               = (known after apply)
+      + instance_type                = "t2.micro"
+      + ipv6_address_count           = (known after apply)
+      + ipv6_addresses               = (known after apply)
+      + key_name                     = "tfkey"
+      + outpost_arn                  = (known after apply)
+      + password_data                = (known after apply)
+      + placement_group              = (known after apply)
+      + primary_network_interface_id = (known after apply)
+      + private_dns                  = (known after apply)
+      + private_ip                   = (known after apply)
+      + public_dns                   = (known after apply)
+      + public_ip                    = (known after apply)
+      + secondary_private_ips        = (known after apply)
+      + security_groups              = (known after apply)
+      + source_dest_check            = true
+      + subnet_id                    = (known after apply)
+      + tenancy                      = (known after apply)
+      + vpc_security_group_ids       = [
+          + "sg-0ebac88bf142c3692",
+        ]
+
+      + ebs_block_device {
+          + delete_on_termination = (known after apply)
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + snapshot_id           = (known after apply)
+          + tags                  = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = (known after apply)
+          + volume_type           = (known after apply)
+        }
+
+      + enclave_options {
+          + enabled = (known after apply)
+        }
+
+      + ephemeral_block_device {
+          + device_name  = (known after apply)
+          + no_device    = (known after apply)
+          + virtual_name = (known after apply)
+        }
+
+      + metadata_options {
+          + http_endpoint               = (known after apply)
+          + http_put_response_hop_limit = (known after apply)
+          + http_tokens                 = (known after apply)
+        }
+
+      + network_interface {
+          + delete_on_termination = (known after apply)
+          + device_index          = (known after apply)
+          + network_interface_id  = (known after apply)
+        }
+
+      + root_block_device {
+          + delete_on_termination = (known after apply)
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + tags                  = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = (known after apply)
+          + volume_type           = (known after apply)
+        }
+    }
+
+  # aws_route_table_association.rta-subnet2 will be created
+  + resource "aws_route_table_association" "rta-subnet2" {
+      + id             = (known after apply)
+      + route_table_id = "rtb-0b0a422fc339f024a"
+      + subnet_id      = (known after apply)
+    }
+
+  # aws_security_group.elb-sg will be created
+  + resource "aws_security_group" "elb-sg" {
+      + arn                    = (known after apply)
+      + description            = "Managed by Terraform"
+      + egress                 = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 0
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "-1"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 0
+            },
+        ]
+      + id                     = (known after apply)
+      + ingress                = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 80
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 80
+            },
+        ]
+      + name                   = "nginx_elb_sg"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + vpc_id                 = "vpc-0a8534e9866d67b8a"
+    }
+
+  # aws_security_group.nginx-sg will be updated in-place
+  ~ resource "aws_security_group" "nginx-sg" {
+        id                     = "sg-0ebac88bf142c3692"
+      ~ ingress                = [
+          - {
+              - cidr_blocks      = [
+                  - "0.0.0.0/0",
+                ]
+              - description      = ""
+              - from_port        = 22
+              - ipv6_cidr_blocks = []
+              - prefix_list_ids  = []
+              - protocol         = "tcp"
+              - security_groups  = []
+              - self             = false
+              - to_port          = 22
+            },
+          - {
+              - cidr_blocks      = [
+                  - "0.0.0.0/0",
+                ]
+              - description      = ""
+              - from_port        = 80
+              - ipv6_cidr_blocks = []
+              - prefix_list_ids  = []
+              - protocol         = "tcp"
+              - security_groups  = []
+              - self             = false
+              - to_port          = 80
+            },
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = null
+              + from_port        = 22
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 22
+            },
+          + {
+              + cidr_blocks      = [
+                  + "10.1.0.0/16",
+                ]
+              + description      = ""
+              + from_port        = 80
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 80
+            },
+        ]
+        name                   = "nginx-sg"
+        tags                   = {}
+        # (6 unchanged attributes hidden)
+    }
+
+  # aws_subnet.subnet2 will be created
+  + resource "aws_subnet" "subnet2" {
+      + arn                             = (known after apply)
+      + assign_ipv6_address_on_creation = false
+      + availability_zone               = "us-east-1b"
+      + availability_zone_id            = (known after apply)
+      + cidr_block                      = "10.1.1.0/24"
+      + id                              = (known after apply)
+      + ipv6_cidr_block_association_id  = (known after apply)
+      + map_public_ip_on_launch         = true
+      + owner_id                        = (known after apply)
+      + tags_all                        = (known after apply)
+      + vpc_id                          = "vpc-0a8534e9866d67b8a"
+    }
+
+Plan: 5 to add, 1 to change, 0 to destroy.
+
+Changes to Outputs:
+  ~ aws_instance_public_dns = "ec2-52-55-93-62.compute-1.amazonaws.com" -> (known after apply)
+
+------------------------------------------------------------------------
+
+This plan was saved to: webapp.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "webapp.tfplan"
+```
+
+When you are happy with the proposed changes use `apply` argument to executed the change and provision the infrastructure.
+
+```bash
+terraform apply "webapp.tfplan"
+aws_subnet.subnet2: Creating...
+aws_security_group.elb-sg: Creating...
+aws_security_group.nginx-sg: Modifying... [id=sg-0ebac88bf142c3692]
+aws_security_group.nginx-sg: Modifications complete after 3s [id=sg-0ebac88bf142c3692]
+aws_subnet.subnet2: Still creating... [10s elapsed]
+aws_security_group.elb-sg: Still creating... [10s elapsed]
+aws_security_group.elb-sg: Creation complete after 14s [id=sg-0435f1072ca08c78f]
+aws_subnet.subnet2: Creation complete after 14s [id=subnet-002fdb836192e8420]
+aws_route_table_association.rta-subnet2: Creating...
+aws_instance.nginx2: Creating...
+aws_route_table_association.rta-subnet2: Creation complete after 1s [id=rtbassoc-0224545ee24f980ab]
+aws_instance.nginx2: Still creating... [10s elapsed]
+#
+# Output Omitted
+#
+Apply complete! Resources: 5 added, 1 changed, 0 destroyed.
+
+The state of your infrastructure has been saved to the path
+below. This state is required to modify and destroy your
+infrastructure, so keep it safe. To inspect the complete state
+use the `terraform show` command.
+
+State path: terraform.tfstate
+
+Outputs:
+
+aws_instance_public_dns = "nginx-elb-1997202815.us-east-1.elb.amazonaws.com"
+```
+
+Once the deployment is completed, you can inspect the `.tfstate` file to retrieve the current state along with all details.
+
+Finally, after few minutes verify the web applications by targeting ELB CNAME record and inspecing the reponse body.
+
+```bash
+# Blue team
+curl nginx-elb-1997202815.us-east-1.elb.amazonaws.com
+<html><head><title>Blue Team Server</title></head><body style="background-color:#1F778D"><p style="text-align: center;"><span style="color:#FFFFFF;"><span style="font-size:28px;">Blue Team</span></span></p></body></html>
+
+# Green team
+curl nginx-elb-1997202815.us-east-1.elb.amazonaws.com
+<html><head><title>Green Team Server</title></head><body style="background-color:#77A032"><p style="text-align: center;"><span style="color:#FFFFFF;"><span style="font-size:28px;">Green Team</span></span></p></body></html>
 ```

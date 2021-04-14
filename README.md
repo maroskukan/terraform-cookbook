@@ -1495,3 +1495,14 @@ output "aws_webapp_url" {
     value = "http://${aws_elb.web.dns_name}"
 }
 ```
+
+To access a value within list or map you need to define the element id or key name. For example to retrieve value of first element within `data.aws_availability_zones.available.names` list, we would use the following syntax:
+
+```bash
+resource "aws_subnet" "subnet1" {
+    cidr_block = var.subnet1_address_space
+    vpc_id = aws_vpc.vpc.id
+    map_public_ip_on_launch = true
+    availability_zone = data.aws_availability_zones.available.names[0]
+}
+```

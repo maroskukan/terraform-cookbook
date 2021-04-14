@@ -33,6 +33,7 @@
       - [File](#file)
       - [Local-exec](#local-exec)
       - [Remote-exec](#remote-exec)
+    - [Change 3 - Add S3 Bucket](#change-3---add-s3-bucket)
 
 ## Introduction
 
@@ -1406,6 +1407,21 @@ curl nginx-elb-1997202815.us-east-1.elb.amazonaws.com
 <html><head><title>Green Team Server</title></head><body style="background-color:#77A032"><p style="text-align: center;"><span style="color:#FFFFFF;"><span style="font-size:28px;">Green Team</span></span></p></body></html>
 ```
 
+One you happy with the change, deprovision the infrastructure by using `destroy` argument.
+
+```bash
+terraform destroy -force
+aws_route_table_association.rta-subnet1: Destroying... [id=rtbassoc-00d4a78aa5901538a]
+aws_route_table_association.rta-subnet2: Destroying... [id=rtbassoc-0224545ee24f980ab]
+aws_elb.web: Destroying... [id=nginx-elb]
+#
+# Output omitted
+#
+Destroy complete! Resources: 12 destroyed.
+```
+
+We are going to recreate the infrastructure later with addtional changes.
+
 
 ## Hashicorp Configuration Language
 
@@ -1565,4 +1581,714 @@ The remote-exec provisioner can execute commands on remote machine.
 provisioner "remote-exec" {
   scripts = " ["list", "of", "local", "scripts"]
 }
+```
+
+### Change 3 - Add S3 Bucket
+
+The third change that we are going to introduce to `webapp` application is the introduction of new S3 bucket which will contain web application static files as well as application logs for long term retention.
+
+In order to do so, EC2 instances will require new role.
+
+Last but not least, we are going to introduce the use of `Resource Tags` to better manager the provisioned infrastructure.
+
+This change can be inspected in commit [7d3813](https://github.com/maroskukan/terraform-cookbook/commit/7d3813b5453e53aa7ec2b5653ba84ec07983a12a). 
+
+Since we are added a new provider `random` we need to initialize terraform once again.
+
+```bash
+terraform init
+
+Initializing the backend...
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/aws from the dependency lock file
+- Finding latest version of hashicorp/random...
+- Using previously-installed hashicorp/aws v3.36.0
+- Installing hashicorp/random v3.1.0...
+- Installed hashicorp/random v3.1.0 (signed by HashiCorp)
+
+Terraform has made some changes to the provider dependency selections recorded
+in the .terraform.lock.hcl file. Review those changes and commit them to your
+version control system if they represent changes you intended to make.
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+```
+
+With complex configuration we can also peform a quick local validation with `valited` argument.
+
+```bash
+terraform validate
+Success! The configuration is valid.
+```
+
+Finally, when you are happy with the changes, generate the plan file. Which compares the current state and then creates a plan file.
+
+```bash
+terraform plan --out webapp.tfplan
+
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_elb.web will be created
+  + resource "aws_elb" "web" {
+      + arn                         = (known after apply)
+      + availability_zones          = (known after apply)
+      + connection_draining         = false
+      + connection_draining_timeout = 300
+      + cross_zone_load_balancing   = true
+      + dns_name                    = (known after apply)
+      + id                          = (known after apply)
+      + idle_timeout                = 60
+      + instances                   = (known after apply)
+      + internal                    = (known after apply)
+      + name                        = "nginx-elb"
+      + security_groups             = (known after apply)
+      + source_security_group       = (known after apply)
+      + source_security_group_id    = (known after apply)
+      + subnets                     = (known after apply)
+      + tags                        = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-elb"
+        }
+      + zone_id                     = (known after apply)
+
+      + health_check {
+          + healthy_threshold   = (known after apply)
+          + interval            = (known after apply)
+          + target              = (known after apply)
+          + timeout             = (known after apply)
+          + unhealthy_threshold = (known after apply)
+        }
+
+      + listener {
+          + instance_port     = 80
+          + instance_protocol = "http"
+          + lb_port           = 80
+          + lb_protocol       = "http"
+        }
+    }
+
+  # aws_iam_instance_profile.nginx_profile will be created
+  + resource "aws_iam_instance_profile" "nginx_profile" {
+      + arn         = (known after apply)
+      + create_date = (known after apply)
+      + id          = (known after apply)
+      + name        = "nginx_profile"
+      + path        = "/"
+      + role        = "allow_nginx_s3"
+      + unique_id   = (known after apply)
+    }
+
+  # aws_iam_role.allow_nginx_s3 will be created
+  + resource "aws_iam_role" "allow_nginx_s3" {
+      + arn                   = (known after apply)
+      + assume_role_policy    = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "sts:AssumeRole"
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + Service = "ec2.amazonaws.com"
+                        }
+                      + Sid       = ""
+                    },
+                ]
+              + Version   = "2012:10-17"
+            }
+        )
+      + create_date           = (known after apply)
+      + force_detach_policies = false
+      + id                    = (known after apply)
+      + managed_policy_arns   = (known after apply)
+      + max_session_duration  = 3600
+      + name                  = "allow_nginx_s3"
+      + path                  = "/"
+      + unique_id             = (known after apply)
+
+      + inline_policy {
+          + name   = (known after apply)
+          + policy = (known after apply)
+        }
+    }
+
+  # aws_iam_role_policy.allow_s3_all will be created
+  + resource "aws_iam_role_policy" "allow_s3_all" {
+      + id     = (known after apply)
+      + name   = "allow_s3_all"
+      + policy = (known after apply)
+      + role   = "allow_nginx_s3"
+    }
+
+  # aws_instance.nginx1 will be created
+  + resource "aws_instance" "nginx1" {
+      + ami                          = "ami-087099ed8e934cdf1"
+      + arn                          = (known after apply)
+      + associate_public_ip_address  = (known after apply)
+      + availability_zone            = (known after apply)
+      + cpu_core_count               = (known after apply)
+      + cpu_threads_per_core         = (known after apply)
+      + get_password_data            = false
+      + host_id                      = (known after apply)
+      + iam_instance_profile         = "nginx_profile"
+      + id                           = (known after apply)
+      + instance_state               = (known after apply)
+      + instance_type                = "t2.micro"
+      + ipv6_address_count           = (known after apply)
+      + ipv6_addresses               = (known after apply)
+      + key_name                     = "tfkey"
+      + outpost_arn                  = (known after apply)
+      + password_data                = (known after apply)
+      + placement_group              = (known after apply)
+      + primary_network_interface_id = (known after apply)
+      + private_dns                  = (known after apply)
+      + private_ip                   = (known after apply)
+      + public_dns                   = (known after apply)
+      + public_ip                    = (known after apply)
+      + secondary_private_ips        = (known after apply)
+      + security_groups              = (known after apply)
+      + source_dest_check            = true
+      + subnet_id                    = (known after apply)
+      + tags                         = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-nginx1"
+        }
+      + tenancy                      = (known after apply)
+      + vpc_security_group_ids       = (known after apply)
+
+      + ebs_block_device {
+          + delete_on_termination = (known after apply)
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + snapshot_id           = (known after apply)
+          + tags                  = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = (known after apply)
+          + volume_type           = (known after apply)
+        }
+
+      + enclave_options {
+          + enabled = (known after apply)
+        }
+
+      + ephemeral_block_device {
+          + device_name  = (known after apply)
+          + no_device    = (known after apply)
+          + virtual_name = (known after apply)
+        }
+
+      + metadata_options {
+          + http_endpoint               = (known after apply)
+          + http_put_response_hop_limit = (known after apply)
+          + http_tokens                 = (known after apply)
+        }
+
+      + network_interface {
+          + delete_on_termination = (known after apply)
+          + device_index          = (known after apply)
+          + network_interface_id  = (known after apply)
+        }
+
+      + root_block_device {
+          + delete_on_termination = (known after apply)
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + tags                  = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = (known after apply)
+          + volume_type           = (known after apply)
+        }
+    }
+
+  # aws_instance.nginx2 will be created
+  + resource "aws_instance" "nginx2" {
+      + ami                          = "ami-087099ed8e934cdf1"
+      + arn                          = (known after apply)
+      + associate_public_ip_address  = (known after apply)
+      + availability_zone            = (known after apply)
+      + cpu_core_count               = (known after apply)
+      + cpu_threads_per_core         = (known after apply)
+      + get_password_data            = false
+      + host_id                      = (known after apply)
+      + id                           = (known after apply)
+      + instance_state               = (known after apply)
+      + instance_type                = "t2.micro"
+      + ipv6_address_count           = (known after apply)
+      + ipv6_addresses               = (known after apply)
+      + key_name                     = "tfkey"
+      + outpost_arn                  = (known after apply)
+      + password_data                = (known after apply)
+      + placement_group              = (known after apply)
+      + primary_network_interface_id = (known after apply)
+      + private_dns                  = (known after apply)
+      + private_ip                   = (known after apply)
+      + public_dns                   = (known after apply)
+      + public_ip                    = (known after apply)
+      + secondary_private_ips        = (known after apply)
+      + security_groups              = (known after apply)
+      + source_dest_check            = true
+      + subnet_id                    = (known after apply)
+      + tags                         = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-nginx2"
+        }
+      + tenancy                      = (known after apply)
+      + vpc_security_group_ids       = (known after apply)
+
+      + ebs_block_device {
+          + delete_on_termination = (known after apply)
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + snapshot_id           = (known after apply)
+          + tags                  = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = (known after apply)
+          + volume_type           = (known after apply)
+        }
+
+      + enclave_options {
+          + enabled = (known after apply)
+        }
+
+      + ephemeral_block_device {
+          + device_name  = (known after apply)
+          + no_device    = (known after apply)
+          + virtual_name = (known after apply)
+        }
+
+      + metadata_options {
+          + http_endpoint               = (known after apply)
+          + http_put_response_hop_limit = (known after apply)
+          + http_tokens                 = (known after apply)
+        }
+
+      + network_interface {
+          + delete_on_termination = (known after apply)
+          + device_index          = (known after apply)
+          + network_interface_id  = (known after apply)
+        }
+
+      + root_block_device {
+          + delete_on_termination = (known after apply)
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + tags                  = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = (known after apply)
+          + volume_type           = (known after apply)
+        }
+    }
+
+  # aws_internet_gateway.igw will be created
+  + resource "aws_internet_gateway" "igw" {
+      + arn      = (known after apply)
+      + id       = (known after apply)
+      + owner_id = (known after apply)
+      + tags     = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-igw"
+        }
+      + vpc_id   = (known after apply)
+    }
+
+  # aws_route_table.rtb will be created
+  + resource "aws_route_table" "rtb" {
+      + arn              = (known after apply)
+      + id               = (known after apply)
+      + owner_id         = (known after apply)
+      + propagating_vgws = (known after apply)
+      + route            = [
+          + {
+              + carrier_gateway_id         = ""
+              + cidr_block                 = "0.0.0.0/0"
+              + destination_prefix_list_id = ""
+              + egress_only_gateway_id     = ""
+              + gateway_id                 = (known after apply)
+              + instance_id                = ""
+              + ipv6_cidr_block            = ""
+              + local_gateway_id           = ""
+              + nat_gateway_id             = ""
+              + network_interface_id       = ""
+              + transit_gateway_id         = ""
+              + vpc_endpoint_id            = ""
+              + vpc_peering_connection_id  = ""
+            },
+        ]
+      + tags             = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-rtb"
+        }
+      + vpc_id           = (known after apply)
+    }
+
+  # aws_route_table_association.rta-subnet1 will be created
+  + resource "aws_route_table_association" "rta-subnet1" {
+      + id             = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # aws_route_table_association.rta-subnet2 will be created
+  + resource "aws_route_table_association" "rta-subnet2" {
+      + id             = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # aws_s3_bucket.web_bucket will be created
+  + resource "aws_s3_bucket" "web_bucket" {
+      + acceleration_status         = (known after apply)
+      + acl                         = "private"
+      + arn                         = (known after apply)
+      + bucket                      = (known after apply)
+      + bucket_domain_name          = (known after apply)
+      + bucket_regional_domain_name = (known after apply)
+      + force_destroy               = true
+      + hosted_zone_id              = (known after apply)
+      + id                          = (known after apply)
+      + region                      = (known after apply)
+      + request_payer               = (known after apply)
+      + tags                        = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-web-bucket"
+        }
+      + website_domain              = (known after apply)
+      + website_endpoint            = (known after apply)
+
+      + versioning {
+          + enabled    = (known after apply)
+          + mfa_delete = (known after apply)
+        }
+    }
+
+  # aws_s3_bucket_object.logo will be created
+  + resource "aws_s3_bucket_object" "logo" {
+      + acl                    = "private"
+      + bucket                 = (known after apply)
+      + bucket_key_enabled     = (known after apply)
+      + content_type           = (known after apply)
+      + etag                   = (known after apply)
+      + force_destroy          = false
+      + id                     = (known after apply)
+      + key                    = "/website/image.png"
+      + kms_key_id             = (known after apply)
+      + server_side_encryption = (known after apply)
+      + source                 = "./website/image.png"
+      + storage_class          = (known after apply)
+      + version_id             = (known after apply)
+    }
+
+  # aws_s3_bucket_object.styles will be created
+  + resource "aws_s3_bucket_object" "styles" {
+      + acl                    = "private"
+      + bucket                 = (known after apply)
+      + bucket_key_enabled     = (known after apply)
+      + content_type           = (known after apply)
+      + etag                   = (known after apply)
+      + force_destroy          = false
+      + id                     = (known after apply)
+      + key                    = "/website/main.css"
+      + kms_key_id             = (known after apply)
+      + server_side_encryption = (known after apply)
+      + source                 = "./website/main.css"
+      + storage_class          = (known after apply)
+      + version_id             = (known after apply)
+    }
+
+  # aws_s3_bucket_object.website will be created
+  + resource "aws_s3_bucket_object" "website" {
+      + acl                    = "private"
+      + bucket                 = (known after apply)
+      + bucket_key_enabled     = (known after apply)
+      + content_type           = (known after apply)
+      + etag                   = (known after apply)
+      + force_destroy          = false
+      + id                     = (known after apply)
+      + key                    = "/website/index.html"
+      + kms_key_id             = (known after apply)
+      + server_side_encryption = (known after apply)
+      + source                 = "./website/index.html"
+      + storage_class          = (known after apply)
+      + version_id             = (known after apply)
+    }
+
+  # aws_security_group.elb-sg will be created
+  + resource "aws_security_group" "elb-sg" {
+      + arn                    = (known after apply)
+      + description            = "Managed by Terraform"
+      + egress                 = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 0
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "-1"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 0
+            },
+        ]
+      + id                     = (known after apply)
+      + ingress                = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 80
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 80
+            },
+        ]
+      + name                   = "nginx_elb_sg"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags                   = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-elb"
+        }
+      + vpc_id                 = (known after apply)
+    }
+
+  # aws_security_group.nginx-sg will be created
+  + resource "aws_security_group" "nginx-sg" {
+      + arn                    = (known after apply)
+      + description            = "Allow ports for nginx demo"
+      + egress                 = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 0
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "-1"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 0
+            },
+        ]
+      + id                     = (known after apply)
+      + ingress                = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 22
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 22
+            },
+          + {
+              + cidr_blocks      = [
+                  + "10.1.0.0/16",
+                ]
+              + description      = ""
+              + from_port        = 80
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 80
+            },
+        ]
+      + name                   = "nginx-sg"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags                   = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-nginx"
+        }
+      + vpc_id                 = (known after apply)
+    }
+
+  # aws_subnet.subnet1 will be created
+  + resource "aws_subnet" "subnet1" {
+      + arn                             = (known after apply)
+      + assign_ipv6_address_on_creation = false
+      + availability_zone               = "us-east-1a"
+      + availability_zone_id            = (known after apply)
+      + cidr_block                      = "10.1.0.0/24"
+      + id                              = (known after apply)
+      + ipv6_cidr_block_association_id  = (known after apply)
+      + map_public_ip_on_launch         = true
+      + owner_id                        = (known after apply)
+      + tags                            = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-subnet1"
+        }
+      + tags_all                        = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-subnet1"
+        }
+      + vpc_id                          = (known after apply)
+    }
+
+  # aws_subnet.subnet2 will be created
+  + resource "aws_subnet" "subnet2" {
+      + arn                             = (known after apply)
+      + assign_ipv6_address_on_creation = false
+      + availability_zone               = "us-east-1b"
+      + availability_zone_id            = (known after apply)
+      + cidr_block                      = "10.1.1.0/24"
+      + id                              = (known after apply)
+      + ipv6_cidr_block_association_id  = (known after apply)
+      + map_public_ip_on_launch         = true
+      + owner_id                        = (known after apply)
+      + tags                            = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-subnet2"
+        }
+      + tags_all                        = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-subnet2"
+        }
+      + vpc_id                          = (known after apply)
+    }
+
+  # aws_vpc.vpc will be created
+  + resource "aws_vpc" "vpc" {
+      + arn                              = (known after apply)
+      + assign_generated_ipv6_cidr_block = false
+      + cidr_block                       = "10.1.0.0/16"
+      + default_network_acl_id           = (known after apply)
+      + default_route_table_id           = (known after apply)
+      + default_security_group_id        = (known after apply)
+      + dhcp_options_id                  = (known after apply)
+      + enable_classiclink               = (known after apply)
+      + enable_classiclink_dns_support   = (known after apply)
+      + enable_dns_hostnames             = true
+      + enable_dns_support               = true
+      + id                               = (known after apply)
+      + instance_tenancy                 = "default"
+      + ipv6_association_id              = (known after apply)
+      + ipv6_cidr_block                  = (known after apply)
+      + main_route_table_id              = (known after apply)
+      + owner_id                         = (known after apply)
+      + tags                             = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-vpc"
+        }
+      + tags_all                         = {
+          + "BillingCode" = "ACCT53245862"
+          + "Environment" = "dev"
+          + "Name"        = "dev-vpc"
+        }
+    }
+
+  # random_integer.rand will be created
+  + resource "random_integer" "rand" {
+      + id     = (known after apply)
+      + max    = 99999
+      + min    = 10000
+      + result = (known after apply)
+    }
+
+Plan: 20 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + aws_elb_public_dns = (known after apply)
+  + aws_webapp_url     = (known after apply)
+
+------------------------------------------------------------------------
+
+This plan was saved to: webapp.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "webapp.tfplan"
+```
+
+Finally, apply the changes. 
+
+```bash
+terraform apply "webapp.tfplan"
+
+random_integer.rand: Creating...
+random_integer.rand: Creation complete after 0s [id=97833]
+aws_iam_role.allow_nginx_s3: Creating...
+aws_vpc.vpc: Creating...
+aws_s3_bucket.web_bucket: Creating...
+aws_iam_role.allow_nginx_s3: Creation complete after 3s [id=allow_nginx_s3]
+#
+# Output omitted
+#
+Apply complete! Resources: 20 added, 0 changed, 0 destroyed.
+
+The state of your infrastructure has been saved to the path
+below. This state is required to modify and destroy your
+infrastructure, so keep it safe. To inspect the complete state
+use the `terraform show` command.
+
+State path: terraform.tfstate
+
+Outputs:
+
+aws_elb_public_dns = "nginx-elb-1125892026.us-east-1.elb.amazonaws.com"
+aws_webapp_url = "http://nginx-elb-1125892026.us-east-1.elb.amazonaws.com"
+```
+
+Verify the application.
+
+```bash
+curl -I http://nginx-elb-1125892026.us-east-1.elb.amazonaws.com
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Content-Length: 400
+Content-Type: text/html
+Date: Wed, 14 Apr 2021 14:28:54 GMT
+ETag: "6076f8bf-190"
+Last-Modified: Wed, 14 Apr 2021 14:14:23 GMT
+Server: nginx/1.18.0
+Connection: keep-alive
 ```

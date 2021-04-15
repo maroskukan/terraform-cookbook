@@ -71,6 +71,7 @@ On the other hand, infrastructure defined in declarative way you only define the
 - [HCL Best Practices](https://www.terraform.io/docs/extend/best-practices/index.html)
 - [Terraform Providers](https://registry.terraform.io/browse/providers)
 - [Terraform Functions](https://www.terraform.io/docs/language/functions/index.html)
+- [Measuring Response Time](https://dev.to/yuyatakeyama/how-i-measure-response-times-of-web-apis-using-curl-6nh)
 
 ## Installation
 

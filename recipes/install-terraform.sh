@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Define version
-TERRAFORM_VERSION=0.14.10
+TERRAFORM_VERSION=0.15.0
 
 # Download, extract and move
 wget -O "terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \

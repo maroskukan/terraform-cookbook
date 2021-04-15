@@ -1,4 +1,6 @@
-# Variables
+#    ***************************************************************************
+#    ********************      Definition of Variables      ********************
+#    ***************************************************************************
 variable "aws_access_key" {}
 variable "aws_secret_key" {}
 variable "private_key_path" {}
@@ -19,14 +21,18 @@ variable "bucket_name_prefix" {}
 variable "billing_code_tag" {}
 variable "environment_tag" {}
 
-# Providers
+#    ***************************************************************************
+#    ********************      Definition of Providers      ********************
+#    ***************************************************************************
 provider "aws" {
     access_key = var.aws_access_key
     secret_key = var.aws_secret_key
     region = var.region
 }
 
-# Locals
+#    ***************************************************************************
+#    ********************      Definition of Locals         ********************
+#    ***************************************************************************
 locals {
     common_tags = {
         BillingCode = var.billing_code_tag
@@ -36,7 +42,9 @@ locals {
     s3_bucket_name = "${var.bucket_name_prefix}-${var.environment_tag}-${random_integer.rand.result}"
 }
 
-# Data sources
+#    ***************************************************************************
+#    ********************    Definition of Data Sources    *********************
+#    ***************************************************************************
 data "aws_ami" "aws-linux" {
     most_recent = true
     owners = ["amazon"]
@@ -56,17 +64,17 @@ data "aws_ami" "aws-linux" {
         values = ["hvm"]
     }
 }
+
 data "aws_availability_zones" "available" {}
 
-# Resources
-
-# Random ID
+#    ***************************************************************************
+#    ********************    Definition of Resources       *********************
+#    ***************************************************************************
 resource "random_integer" "rand" {
     min = 10000
     max = 99999
 }
 
-# Networking
 resource "aws_vpc" "vpc" {
     cidr_block = var.network_address_space
     enable_dns_hostnames = true
@@ -98,7 +106,6 @@ resource "aws_subnet" "subnet2" {
     tags = merge(local.common_tags, { Name = "${var.environment_tag}-subnet2" })
 }
 
-# Routing
 resource "aws_route_table" "rtb" {
     vpc_id = aws_vpc.vpc.id
     route {
@@ -119,7 +126,6 @@ resource "aws_route_table_association" "rta-subnet2" {
     route_table_id = aws_route_table.rtb.id
 }
 
-# Security Groups
 resource "aws_security_group" "elb-sg" {
     name = "nginx_elb_sg"
     vpc_id = aws_vpc.vpc.id
@@ -172,7 +178,7 @@ resource "aws_security_group" "nginx-sg" {
 
     tags = merge(local.common_tags, { Name = "${var.environment_tag}-nginx" })
 }
-# ELB Instance
+
 resource "aws_elb" "web" {
     name = "nginx-elb"
     
@@ -190,7 +196,6 @@ resource "aws_elb" "web" {
     tags = merge(local.common_tags, { Name = "${var.environment_tag}-elb" })
 }
 
-# EC2 Instances
 resource "aws_instance" "nginx1" {
     ami = data.aws_ami.aws-linux.id
     instance_type = "t2.micro"
@@ -327,7 +332,6 @@ EOF
     tags = merge(local.common_tags, { Name = "${var.environment_tag}-nginx2" })
 }
 
-# S3 Bucket configuration
 resource "aws_iam_role" "allow_nginx_s3" {
     name = "allow_nginx_s3"
 
@@ -401,8 +405,9 @@ resource "aws_s3_bucket_object" "styles" {
     source = "./website/main.css"
 }
 
-
-# Output
+#    ***************************************************************************
+#    ********************    Output data from script       *********************
+#    ***************************************************************************
 output "aws_elb_public_dns" {
     value = aws_elb.web.dns_name
 }

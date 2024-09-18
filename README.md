@@ -83,14 +83,14 @@ Terraform is distributed as single binary. In order to isntall it on Linux syste
 
 ```bash
 # Define version
-TERRAFORM_VERSION=0.14.10
+TERRAFORM_VERSION=1.9.5
 
-# Download, extract and move
+# Download the archive
 wget -O "terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \
     "https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
 
-# Unzip the archive
-sudo unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip -d /usr/bin
+# Unzip the binary from the archive
+sudo unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip terraform -d /usr/local/bin/
 
 # Cleanup
 rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
@@ -99,8 +99,11 @@ rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
 Once installed, verify by invoking version information.
 
 ```bash
-terraform --version
-Terraform v0.14.10
+terraform version
+
+# Output
+Terraform v1.9.5
+on linux_amd64
 ```
 
 ## Components
@@ -111,7 +114,7 @@ You may notice from the installation steps for Linux, terraform comes as single 
 
 ### Plugins
 
-Terraform plugins are executable binaries written in Go Language which extend the capabilities of Core. Currently there is just one type of plugin - `providers`. Some example providers include be `AWS`, `Azure`, `GCP`, `Kubernetes`. 
+Terraform plugins are executable binaries written in Go Language which extend the capabilities of Core. Currently there is just one type of plugin - `providers`. Some example providers include be `AWS`, `Azure`, `GCP`, `Kubernetes`.
 
 ### Configuration Files
 
@@ -162,22 +165,45 @@ When resources have been provisioned Terraform state file(s) are used to keep tr
 
 ### AWS
 
-To provision infrastructure on AWS, Terraform will require you to configure credentials with necessary permissions. 
+To provision infrastructure on AWS, Terraform will require you to configure credentials with necessary permissions.
 
 For example, I have an existing AWS IAM group `AWSAdmins` which has attached policy `AdministratorAccess`. In order to create a new user, make it member of this group and generate credentials you can leverage `create_iam_user.sh` script located in `recipes` directory. It uses aws cli to perform these actions.
+
+If you haven't already, download and install the AWS CLI using the instructions in code snipped below.
+
+```bash
+# Download and extract
+wget "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+unzip awscli-exe-linux-x86_64.zip
+
+# Install
+sudo ./aws/install
+
+# Cleanup
+rm -rf ./aws
+
+# Verify
+aws --version
+aws-cli/2.17.53 Python/3.12.6 Linux/6.10.9-200.fc40.x86_64 exe/x86_64.fedora.40
+
+# Configure your credentials
+aws configure
+```
+
+Next, define new IAM user and add it to appropriate group.
 
 ```bash
 # Define IAM Username
 TF_IAM_USER="tfdemo"
 
 # Create and add user to group
-aws iam create-user --user-name $TF_IAM_USER
+aws iam create-user --user-name ${TF_IAM_USER}
 aws iam add-user-to-group \
 --group-name AWSAdmins \
---user-name $TF_IAM_USER
+--user-name ${TF_IAM_USER}
 
-# Generate access key
-aws iam create-access-key --user-name $TF_IAM_USER
+# Generate access key and store the credentials
+aws iam create-access-key --user-name ${TF_IAM_USER}
 ```
 
 The output of last command will contain the value for `AccessKeyId` and `SecretAccessKey` which you need to enter in the `.tfvars` file.

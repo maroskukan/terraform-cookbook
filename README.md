@@ -37,6 +37,7 @@
   - [Functions](#functions)
     - [Categories](#categories)
     - [Examples](#examples)
+  - [Tips](#tips)
 
 ## Introduction
 
@@ -69,7 +70,8 @@ On the other hand, infrastructure defined in declarative way you only define the
 ## Documentation
 
 - [HCL Best Practices](https://www.terraform.io/docs/extend/best-practices/index.html)
-- [Terraform Providers](https://registry.terraform.io/browse/providers)
+- [Terraform Regostry Providers](https://registry.terraform.io/browse/providers)
+- [Terraform Registry - Modules](https://registry.terraform.io/browse/modules)
 - [Terraform Functions](https://www.terraform.io/docs/language/functions/index.html)
 - [Measuring Response Time](https://dev.to/yuyatakeyama/how-i-measure-response-times-of-web-apis-using-curl-6nh)
 
@@ -203,8 +205,17 @@ aws iam add-user-to-group \
 --user-name ${TF_IAM_USER}
 
 # Generate access key and store the credentials
-aws iam create-access-key --user-name ${TF_IAM_USER}
+aws iam create-access-key --user-name ${TF_IAM_USER} > $HOME/.aws/${TF_IAM_USER}-access-key.json
 ```
+
+To load the `AccessKeyID` and `SecretAccessKey` into environment we can use the following commands.
+
+```bash
+export AWS_ACCESS_KEY_ID=$(jq -r '.AccessKey.AccessKeyId' $HOME/.aws/${TF_IAM_USER}-access-key.json)
+export AWS_SECRET_ACCESS_KEY=$(jq -r '.AccessKey.SecretAccessKey' $HOME/.aws/${TF_IAM_USER}-access-key.json)
+```
+
+If you are using Terraform Cloud, these variables are required to be present in your Workspace.
 
 The output of last command will contain the value for `AccessKeyId` and `SecretAccessKey` which you need to enter in the `.tfvars` file.
 
@@ -2370,4 +2381,24 @@ variable "amis" {
 ami = lookup(var.amis, "us-west-1", "error")
 ```
 
+## Tips
 
+Unsorted for now...
+
+```bash
+terraform init
+
+terraform validate
+
+terraform fmt
+
+terraform plan -out=tfplan
+
+terraform apply
+
+terraform state list
+
+terraform show -json | jq '.values.root_module.resources[] | select(.address == "aws_instance.MyInstance") | .values.arn'
+
+terraform destroy
+```
